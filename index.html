@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Juego con Calaveras</title>
+    <style>* { padding: 0; margin: 0; } canvas { display: block; }</style>
+</head>
+<body>
+
+<canvas id="myCanvas"></canvas>
+
+<script>
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    var ballRadius = 10;
+    var x, y, dx, dy;
+    var paddleHeight = 10;
+    var paddleWidth = 75;
+    var paddleX;
+    var rightPressed = false;
+    var leftPressed = false;
+    var score;
+    var lives;
+    var ballColor;
+    var topPaddles;
+    var topPaddleCount = 5;
+    var topPaddleSpacing = 50;
+    var paddleBrokenCount;
+    var skulls = [];
+    var skullWidth = 30;
+    var skullHeight = 30;
+    var skullSpeed = 10;
+    var skullSpawnInterval = 1500;
+    var skullSpawnTimer;
+
+    // Iniciar las variables del juego
+    function resetGame() {
+        x = canvas.width / 2;
+        y = canvas.height - 30;
+        dx = 4;  // Restablecer la velocidad horizontal
+        dy = -4; // Restablecer la velocidad vertical
+        paddleX = (canvas.width - paddleWidth) / 2;
+        score = 0;
+        lives = 3;
+        ballColor = "#0095DD";
+        skulls = [];
+        topPaddles = [];
+        paddleBrokenCount = 0;
+
+        // Generar las barras superiores
+        for (var i = 0; i < topPaddleCount; i++) {
+            topPaddles.push({
+                x: (canvas.width - paddleWidth) / 2 + i * (paddleWidth + 10),
+                y: topPaddleSpacing,
+                width: paddleWidth,
+                height: paddleHeight,
+                broken: false
+            });
+        }
+
+        // Reiniciar el temporizador de las calaveras
+        clearInterval(skullSpawnTimer);
+        skullSpawnTimer = setInterval(spawnSkull, skullSpawnInterval);
+
+        draw();
+    }
+
+    function keyDownHandler(e) {
+        if (e.code == "ArrowRight") {
+            rightPressed = true;
+        }
+        else if (e.code == "ArrowLeft") {
+            leftPressed = true;
+        }
+    }
+
+    function keyUpHandler(e) {
+        if (e.code == "ArrowRight") {
+            rightPressed = false;
+        }
+        else if (e.code == "ArrowLeft") {
+            leftPressed = false;
+        }
+    }
+
+    function mouseMoveHandler(e) {
+        var relativeX = e.clientX - canvas.offsetLeft;
+        if (relativeX > 0 && relativeX < canvas.width) {
+            paddleX = relativeX - paddleWidth / 2;
+        }
+    }
+
+    function changeBallColor() {
+        var colors = ["#0095DD", "#FF5733", "#33FF57", "#5733FF", "#FF33A8", "#FF9633"];
+        ballColor = colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = ballColor;
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+        ctx.fillStyle = "#0095DD";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawTopPaddles() {
+        topPaddles.forEach(paddle => {
+            if (!paddle.broken) {
+                ctx.fillStyle = "#FF5733";
+                ctx.beginPath();
+                ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
+                ctx.fill();
+                ctx.closePath();
+            }
+        });
+    }
+
+    function drawSkulls() {
+        skulls.forEach(skull => {
+            ctx.beginPath();
+            ctx.rect(skull.x, skull.y, skullWidth, skullHeight);
+            ctx.fillStyle = "red";
+            ctx.fill();
+            ctx.closePath();
+        });
+    }
+
+    function moveSkulls() {
+        for (var i = 0; i < skulls.length; i++) {
+            skulls[i].y += skullSpeed;
+
+            if (
+                skulls[i].y + skullHeight >= canvas.height - paddleHeight &&
+                skulls[i].x > paddleX &&
+                skulls[i].x < paddleX + paddleWidth
+            ) {
+                alert("Has sido golpeado por una calavera. ¡Perdiste!");
+                resetGame();
+                return;
+            }
+
+            if (skulls[i].y > canvas.height) {
+                skulls.splice(i, 1);
+                i--;
+            }
+        }
+    }
+
+    function spawnSkull() {
+        var skullX = Math.random() * (canvas.width - skullWidth);
+        skulls.push({ x: skullX, y: 0 });
+    }
+
+    function collisionWithTopPaddles() {
+        topPaddles.forEach(paddle => {
+            if (
+                !paddle.broken &&
+                x > paddle.x &&
+                x < paddle.x + paddle.width &&
+                y - ballRadius < paddle.y + paddle.height &&
+                y + ballRadius > paddle.y
+            ) {
+                dy = -dy;
+                paddle.broken = true;
+                changeBallColor();
+                score += 10;
+                paddleBrokenCount++;
+
+                if (paddleBrokenCount === topPaddleCount) {
+                    alert("¡Tú ganas!");
+                    resetGame();
+                }
+            }
+        });
+    }
+
+    function drawScore() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Score: " + score, 8, 20);
+    }
+
+    function drawLives() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Lives: " + lives, canvas.width - 65, 20);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBall();
+        drawPaddle();
+        drawTopPaddles();
+        drawSkulls();
+        drawScore();
+        drawLives();
+        collisionWithTopPaddles();
+        moveSkulls();
+
+        if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+            dx = -dx;
+            changeBallColor();
+        }
+        if (y + dy < ballRadius) {
+            dy = -dy;
+            changeBallColor();
+        }
+        else if (y + dy > canvas.height - ballRadius) {
+            if (x > paddleX && x < paddleX + paddleWidth) {
+                dy = -dy;  // Rebotar en el paddle sin acelerar
+                changeBallColor();
+            }
+            else {
+                lives--;
+                if (!lives) {
+                    alert("GAME OVER");
+                    resetGame();
+                }
+                else {
+                    x = canvas.width / 2;
+                    y = canvas.height - 30;
+                    dx = 4;  // Restablecer velocidad horizontal
+                    dy = -4; // Restablecer velocidad vertical
+                    paddleX = (canvas.width - paddleWidth) / 2;
+                }
+            }
+        }
+
+        if (rightPressed && paddleX < canvas.width - paddleWidth) {
+            paddleX += 7;
+        }
+        else if (leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+
+        x += dx;
+        y += dy;
+        requestAnimationFrame(draw);
+    }
+
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+    document.addEventListener("mousemove", mouseMoveHandler, false);
+
+    resetGame();
+</script>
+
+</body>
+</html>
+
+
+
+
